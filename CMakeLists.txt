@@ -6,7 +6,7 @@ project(hnz	VERSION 0.0.1
 file(GLOB_RECURSE sources
                   sources/*.cpp)
 
-add_executable(hnz	${sources})
+add_library(hnz	${sources})
 
 target_include_directories(hnz	PUBLIC
                            		includes/)
