@@ -55,6 +55,9 @@ namespace hnz {
     template<typename T>
     using queue = std::queue<T>;
 
+    template<typename T>
+    using vector = std::vector<T>;
+
     constexpr auto hash (std::string_view str) noexcept -> hnz::u64 {
         return std::empty (str) ? 0xcbf29ce484222325UL
                                 : (hnz::as<hnz::u64> (str[0])

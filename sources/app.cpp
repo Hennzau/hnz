@@ -8,9 +8,6 @@ void hnz::App::join () {
 }
 
 void hnz::App::run () {
-    std::this_thread::sleep_for (std::chrono::milliseconds (100));
-
-    std::cout << "Hello from " << std::this_thread::get_id () << std::endl;
 }
 
 void hnz::App::build () {
@@ -19,7 +16,6 @@ void hnz::App::build () {
     m_ecs_thread = std::thread ([&] () {
         while (m_running.is ()) {
             if (m_safe.commands.empty ()) {
-                std::this_thread::sleep_for (std::chrono::milliseconds (500));
                 continue;
             }
 
@@ -29,8 +25,6 @@ void hnz::App::build () {
                 using command_type = std::decay_t<decltype (command)>;
 
                 if constexpr (std::is_same_v<command_type, SpawnCommand>) {
-                    std::this_thread::sleep_for (std::chrono::milliseconds (200));
-
                     const auto entity = m_next_entity++;
                     command.entity.set_value (entity);
                     m_safe.entities.insert (entity);
@@ -38,14 +32,61 @@ void hnz::App::build () {
                     std::cout << "Spawning entity : " << entity << std::endl;
 
                 } else if constexpr (std::is_same_v<command_type, ParentingCommand>) {
-                    std::this_thread::sleep_for (std::chrono::milliseconds (100));
-
                     auto entity = command.entity.get ();
                     auto parent = command.parent.get ();
 
-                    m_safe.parents[entity].insert (parent);
+                    m_safe.parents[parent].insert (entity);
 
-                    std::cout << "Parenting entity : " << entity << " to : " << parent << std::endl;
+                    std::cout << "Parenting entity : " << entity << " is child of : " << parent << std::endl;
+                } else if constexpr (std::is_same_v<command_type, KillCommand>) {
+
+                    auto entity    = command.entity.get ();
+                    auto genealogy = command.genealogy;
+
+                    auto list    = genealogy ? m_safe.parents[entity] : hnz::set<hnz::entity> {};
+                    auto deja_vu = hnz::set<hnz::entity> {};
+
+                    while (not list.empty ()) {
+                        auto current = *list.begin ();
+                        list.erase (current);
+
+                        deja_vu.insert (current);
+
+                        for (auto& child: m_safe.parents[current]) {
+                            if (std::find (deja_vu.begin (), deja_vu.end (), child) == deja_vu.end ()) {
+                                list.insert (child);
+                            }
+                        }
+
+                        m_safe.entities.erase (current);
+                        m_safe.parents.erase (current);
+                        m_safe.components[current].clear ();
+
+                        std::cout << "Killing entity : " << current << std::endl;
+                    }
+
+                    m_safe.entities.erase (entity);
+                    m_safe.parents.erase (entity);
+                    m_safe.components[entity].clear ();
+
+                    std::cout << "Killing entity : " << entity << std::endl;
+                } else if constexpr (std::is_same_v<command_type, AddComponentCommand>) {
+                    auto entity = command.entity.get ();
+                    auto type   = command.type;
+
+
+                    m_safe.components[entity][type] = std::move (command.component);
+                    m_safe.updated_entities.insert (entity);
+
+                    std::cout << "Adding component : " << type << " to entity : " << entity << std::endl;
+                } else if constexpr (std::is_same_v<command_type, RemoveComponentCommand>) {
+                    auto entity = command.entity.get ();
+                    auto type   = command.type;
+
+                    m_safe.components[entity].erase (type);
+                    m_safe.updated_entities.insert (entity);
+
+                    std::cout << "Removing component : " << type << " from entity : " << entity << std::endl;
                 } else {
                     std::cout << "Unknown command " << std::endl;
                 }
@@ -76,5 +117,19 @@ auto hnz::App::spawn (hnz::fentity& parent) -> hnz::fentity {
     });
 
     return entity;
+}
+
+auto hnz::App::kill (hnz::fentity& entity) -> void {
+    m_safe.commands.push (KillCommand {
+            .entity     = entity,
+            .genealogy  = false
+    });
+}
+
+auto hnz::App::kill_all (hnz::fentity& entity) -> void {
+    m_safe.commands.push (KillCommand {
+            .entity     = entity,
+            .genealogy  = true
+    });
 }
 

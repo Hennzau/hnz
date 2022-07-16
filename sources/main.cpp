@@ -45,16 +45,26 @@ struct PlayerMovement : public hnz::System {
 
 int main () {
     auto app = hnz::App {};
+    app.build ();
 
     auto work = std::thread ([&app] () {
         std::this_thread::sleep_for (std::chrono::seconds (3));
         app.running ().set (false);
     });
 
-    auto player = app.spawn ();
-    auto weapon = app.spawn (player);
+    auto player = app.spawn ();             // 1
+    auto weapon = app.spawn (player);   // 2
+    auto armor  = app.spawn (player);   // 3
+    auto ammo   = app.spawn (weapon);   // 4
+    auto wings  = app.spawn (player);   // 5
+    auto fire   = app.spawn (wings);    // 6
 
-    app.build ();
+    app.add_component<Position> (player, 0.0f, 0.0f);
+    app.add_component<Velocity> (player, 1.0f, 0.0f);
+
+    app.add_component<Position> (weapon, 0.0f, 0.0f);
+
+    app.kill_all (player);
 
     while (app.running ().is ()) {
         app.run ();
@@ -62,7 +72,8 @@ int main () {
 
     work.join ();
     app.join ();
-/*
+
+    /*
     std::cout << "Total entities : " << app.entities ().size () << std::endl;
 
     for (const auto& [parent, entities]: app.parents ()) {
@@ -71,7 +82,7 @@ int main () {
             std::cout << entity << " ";
         }
         std::cout << std::endl;
-    }
-*/
+    } */
+
     return 0;
 }

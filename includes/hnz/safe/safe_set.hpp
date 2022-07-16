@@ -22,6 +22,11 @@ namespace hnz::safe {
                 m_set.erase (value);
             }
 
+            void erase (T&& value) {
+                std::lock_guard<std::mutex> lock (m_mutex);
+                m_set.erase (std::move (value));
+            }
+
             bool contains (T const& value) const {
                 std::lock_guard<std::mutex> lock (m_mutex);
                 return m_set.find (value) != m_set.end ();

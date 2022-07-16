@@ -13,6 +13,7 @@
 #include <hnz/safe/safe_set.hpp>
 #include <hnz/safe/safe_map.hpp>
 #include <hnz/safe/safe_queue.hpp>
+#include <hnz/safe/safe_vector.hpp>
 
 namespace hnz {
     class App {
@@ -42,6 +43,27 @@ namespace hnz {
 
             auto spawn (hnz::fentity& parent) -> hnz::fentity;
 
+            auto kill (hnz::fentity& entity) -> void;
+
+            auto kill_all (hnz::fentity& entity) -> void;
+
+            template<typename T, typename... Args>
+            auto add_component (hnz::fentity& entity, Args&& ... args) -> void {
+                m_safe.commands.push (AddComponentCommand {
+                        .entity = entity,
+                        .type = T::TYPE,
+                        .component = std::make_unique<T> (std::forward<Args> (args)...)
+                });
+            }
+
+            template<typename T>
+            auto remove_component (hnz::fentity& entity) -> void {
+                m_safe.commands.push (RemoveComponentCommand {
+                        .entity = entity,
+                        .type = T::TYPE
+                });
+            }
+
         private:
 
             /* App */
@@ -59,7 +81,23 @@ namespace hnz {
                 hnz::fentity parent;
             };
 
-            using commands = std::variant<SpawnCommand, ParentingCommand>;
+            struct KillCommand {
+                hnz::fentity entity;
+                bool         genealogy = false;
+            };
+
+            struct AddComponentCommand {
+                hnz::fentity               entity;
+                hnz::Component::Type       type;
+                hnz::owner<hnz::Component> component;
+            };
+
+            struct RemoveComponentCommand {
+                hnz::fentity         entity;
+                hnz::Component::Type type;
+            };
+
+            using commands = std::variant<SpawnCommand, ParentingCommand, KillCommand, AddComponentCommand, RemoveComponentCommand>;
 
             /* Safe objects */
 
@@ -67,7 +105,10 @@ namespace hnz {
                 hnz::safe::queue<commands> commands;
 
                 hnz::safe::set<hnz::entity>                        entities;
+                hnz::safe::set<hnz::entity>                        updated_entities;
                 hnz::safe::map<hnz::entity, hnz::set<hnz::entity>> parents;
+
+                hnz::safe::map<hnz::entity, hnz::map<hnz::Component::Type, hnz::owner<hnz::Component>>> components;
             }                    m_safe;
 
             hnz::u32 m_next_entity = 1;
