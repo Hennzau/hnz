@@ -1,13 +1,17 @@
-#include <iostream>
 #include <thread>
+#include <cassert>
 
 #include <hnz/app.hpp>
+
+#include <iostream>
 
 void hnz::App::join () {
     m_ecs_thread.join ();
 }
 
 void hnz::App::run () {
+    std::this_thread::sleep_for (std::chrono::milliseconds (200));
+    std::cout << "Hello, World!" << std::endl;
 }
 
 void hnz::App::build () {
@@ -22,93 +26,90 @@ void hnz::App::build () {
             auto& command_var = m_safe.commands.front ();
 
             std::visit ([&] (auto&& command) {
-                using command_type = std::decay_t<decltype (command)>;
+                            using command_type = std::decay_t<decltype (command)>;
 
-                if constexpr (std::is_same_v<command_type, SpawnCommand>) {
-                    const auto entity = m_next_entity++;
-                    command.entity.set_value (entity);
-                    m_safe.entities.insert (entity);
+                            if constexpr (std::is_same_v<command_type, ParentingCommand>) {
+                                auto entity = command.entity;
+                                auto parent = command.parent;
 
-                    std::cout << "Spawning entity : " << entity << std::endl;
+                                m_safe.parents[parent].insert (entity);
 
-                } else if constexpr (std::is_same_v<command_type, ParentingCommand>) {
-                    auto entity = command.entity.get ();
-                    auto parent = command.parent.get ();
+                                std::cout << "Parenting entity : " << entity << " is child of : " << parent << std::endl;
+                            } else if constexpr (std::is_same_v<command_type, UnParentingUnknownCommand>) {
+                                auto entity = command.entity;
 
-                    m_safe.parents[parent].insert (entity);
+                                for (auto& [parent, entities]: m_safe.parents) {
+                                    for (auto& child: entities) {
+                                        if (child == entity) {
+                                            m_safe.commands.push (UnParentingKnownCommand {
+                                                    .entity = entity,
+                                                    .parent = parent
+                                            });
+                                        }
+                                    }
+                                }
 
-                    std::cout << "Parenting entity : " << entity << " is child of : " << parent << std::endl;
-                } else if constexpr (std::is_same_v<command_type, KillCommand>) {
+                            } else if constexpr (std::is_same_v<command_type, UnParentingKnownCommand>) {
+                                auto entity = command.entity;
+                                auto parent = command.parent;
 
-                    auto entity    = command.entity.get ();
-                    auto genealogy = command.genealogy;
+                                if (m_safe.parents[parent].contains (entity)) {
+                                    m_safe.parents[parent].erase (entity);
 
-                    auto list    = genealogy ? m_safe.parents[entity] : hnz::set<hnz::entity> {};
-                    auto deja_vu = hnz::set<hnz::entity> {};
+                                    std::cout << "UnParenting entity : " << entity << " from : " << parent << std::endl;
+                                }
+                            } else if constexpr (std::is_same_v<command_type, KillCommand>) {
+                                auto entity    = command.entity;
+                                auto genealogy = command.genealogy;
 
-                    while (not list.empty ()) {
-                        auto current = *list.begin ();
-                        list.erase (current);
+                                if (genealogy) {
+                                    for (auto child: m_safe.parents[entity]) {
+                                        m_safe.commands.push (KillCommand {
+                                                .entity = child,
+                                                .genealogy = true
+                                        });
+                                    }
+                                }
 
-                        deja_vu.insert (current);
+                                m_safe.entities.erase (entity);
+                                m_safe.parents.erase (entity);
+                                m_safe.components[entity].clear ();
 
-                        for (auto& child: m_safe.parents[current]) {
-                            if (std::find (deja_vu.begin (), deja_vu.end (), child) == deja_vu.end ()) {
-                                list.insert (child);
+                                std::cout << "Killing entity : " << entity << std::endl;
+                            } else if constexpr (std::is_same_v<command_type, AddComponentCommand>) {
+                                auto entity = command.entity;
+                                auto type   = command.type;
+
+                                m_safe.components[entity][type] = std::move (command.component);
+
+                                std::cout << "Adding component : " << type << " to entity : " << entity << std::endl;
+                            } else if constexpr (std::is_same_v<command_type, RemoveComponentCommand>) {
+                                auto entity = command.entity;
+                                auto type   = command.type;
+
+                                m_safe.components[entity].erase (type);
+
+                                std::cout << "Removing component : " << type << " from entity : " << entity << std::endl;
+                            } else {
+                                std::cout << "Unknown command " << std::endl;
                             }
-                        }
-
-                        m_safe.entities.erase (current);
-                        m_safe.parents.erase (current);
-                        m_safe.components[current].clear ();
-
-                        std::cout << "Killing entity : " << current << std::endl;
-                    }
-
-                    m_safe.entities.erase (entity);
-                    m_safe.parents.erase (entity);
-                    m_safe.components[entity].clear ();
-
-                    std::cout << "Killing entity : " << entity << std::endl;
-                } else if constexpr (std::is_same_v<command_type, AddComponentCommand>) {
-                    auto entity = command.entity.get ();
-                    auto type   = command.type;
-
-
-                    m_safe.components[entity][type] = std::move (command.component);
-                    m_safe.updated_entities.insert (entity);
-
-                    std::cout << "Adding component : " << type << " to entity : " << entity << std::endl;
-                } else if constexpr (std::is_same_v<command_type, RemoveComponentCommand>) {
-                    auto entity = command.entity.get ();
-                    auto type   = command.type;
-
-                    m_safe.components[entity].erase (type);
-                    m_safe.updated_entities.insert (entity);
-
-                    std::cout << "Removing component : " << type << " from entity : " << entity << std::endl;
-                } else {
-                    std::cout << "Unknown command " << std::endl;
-                }
-            }, command_var);
+                        },
+                        command_var);
 
             m_safe.commands.pop ();
         }
     });
 }
 
-auto hnz::App::spawn () -> hnz::fentity {
-    auto promise = hnz::pentity {};
-    auto future  = promise.get_future ().share ();
+auto hnz::App::spawn () -> hnz::entity {
+    auto entity = m_next_entity++;
 
-    m_safe.commands.push (SpawnCommand {
-            .entity = std::move (promise)
-    });
+    m_safe.entities.insert (entity);
 
-    return future;
+    return entity;
 }
 
-auto hnz::App::spawn (hnz::fentity& parent) -> hnz::fentity {
+auto hnz::App::spawn (hnz::entity& parent) -> hnz::entity {
     auto entity = spawn ();
 
     m_safe.commands.push (ParentingCommand {
@@ -119,17 +120,27 @@ auto hnz::App::spawn (hnz::fentity& parent) -> hnz::fentity {
     return entity;
 }
 
-auto hnz::App::kill (hnz::fentity& entity) -> void {
-    m_safe.commands.push (KillCommand {
-            .entity     = entity,
-            .genealogy  = false
-    });
+auto hnz::App::exists (hnz::entity entity) const -> bool {
+    if (entity == hnz::INVALID_ENTITY) {
+        return false;
+    }
+
+    auto it = std::find (m_safe.entities.cbegin (),
+                         m_safe.entities.cend (),
+                         entity);
+
+    return it != m_safe.entities.cend ();
 }
 
-auto hnz::App::kill_all (hnz::fentity& entity) -> void {
+auto hnz::App::kill (hnz::entity& entity, bool genealogy) -> void {
+    assert (exists (entity));
+
     m_safe.commands.push (KillCommand {
-            .entity     = entity,
-            .genealogy  = true
+            .entity = entity,
+            .genealogy = genealogy
+    });
+
+    m_safe.commands.push (UnParentingUnknownCommand {
+            .entity = entity
     });
 }
-

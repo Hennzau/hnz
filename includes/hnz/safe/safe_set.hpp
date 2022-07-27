@@ -27,6 +27,11 @@ namespace hnz::safe {
                 m_set.erase (std::move (value));
             }
 
+            void erase (typename hnz::set<T>::const_iterator it) {
+                std::lock_guard<std::mutex> lock (m_mutex);
+                m_set.erase (it);
+            }
+
             bool contains (T const& value) const {
                 std::lock_guard<std::mutex> lock (m_mutex);
                 return m_set.find (value) != m_set.end ();
@@ -47,9 +52,19 @@ namespace hnz::safe {
                 return m_set.begin ();
             }
 
+            auto cbegin () const {
+                std::lock_guard<std::mutex> lock (m_mutex);
+                return m_set.cbegin ();
+            }
+
             auto end () const {
                 std::lock_guard<std::mutex> lock (m_mutex);
                 return m_set.end ();
+            }
+
+            auto cend () const {
+                std::lock_guard<std::mutex> lock (m_mutex);
+                return m_set.cend ();
             }
 
             auto size () const {

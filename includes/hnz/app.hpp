@@ -39,16 +39,16 @@ namespace hnz {
 
             /* entities */
 
-            auto spawn () -> hnz::fentity;
+            auto spawn () -> hnz::entity;
 
-            auto spawn (hnz::fentity& parent) -> hnz::fentity;
+            auto spawn (hnz::entity& parent) -> hnz::entity;
 
-            auto kill (hnz::fentity& entity) -> void;
+            auto exists (hnz::entity entity) const -> bool;
 
-            auto kill_all (hnz::fentity& entity) -> void;
+            auto kill (hnz::entity& entity, bool genealogy = false) -> void;
 
             template<typename T, typename... Args>
-            auto add_component (hnz::fentity& entity, Args&& ... args) -> void {
+            auto add_component (hnz::entity& entity, Args&& ... args) -> void {
                 m_safe.commands.push (AddComponentCommand {
                         .entity = entity,
                         .type = T::TYPE,
@@ -57,7 +57,7 @@ namespace hnz {
             }
 
             template<typename T>
-            auto remove_component (hnz::fentity& entity) -> void {
+            auto remove_component (hnz::entity& entity) -> void {
                 m_safe.commands.push (RemoveComponentCommand {
                         .entity = entity,
                         .type = T::TYPE
@@ -72,32 +72,37 @@ namespace hnz {
 
             /* These are the commands that are sent to the app. */
 
-            struct SpawnCommand {
-                hnz::pentity entity;
+            struct ParentingCommand {
+                hnz::entity entity;
+                hnz::entity parent;
             };
 
-            struct ParentingCommand {
-                hnz::fentity entity;
-                hnz::fentity parent;
+            struct UnParentingUnknownCommand {
+                hnz::entity entity;
+            };
+
+            struct UnParentingKnownCommand {
+                hnz::entity entity;
+                hnz::entity parent;
             };
 
             struct KillCommand {
-                hnz::fentity entity;
-                bool         genealogy = false;
+                hnz::entity entity;
+                bool        genealogy;
             };
 
             struct AddComponentCommand {
-                hnz::fentity               entity;
+                hnz::entity                entity;
                 hnz::Component::Type       type;
                 hnz::owner<hnz::Component> component;
             };
 
             struct RemoveComponentCommand {
-                hnz::fentity         entity;
+                hnz::entity          entity;
                 hnz::Component::Type type;
             };
 
-            using commands = std::variant<SpawnCommand, ParentingCommand, KillCommand, AddComponentCommand, RemoveComponentCommand>;
+            using commands = std::variant<ParentingCommand, UnParentingUnknownCommand, UnParentingKnownCommand, KillCommand, AddComponentCommand, RemoveComponentCommand>;
 
             /* Safe objects */
 
@@ -105,7 +110,6 @@ namespace hnz {
                 hnz::safe::queue<commands> commands;
 
                 hnz::safe::set<hnz::entity>                        entities;
-                hnz::safe::set<hnz::entity>                        updated_entities;
                 hnz::safe::map<hnz::entity, hnz::set<hnz::entity>> parents;
 
                 hnz::safe::map<hnz::entity, hnz::map<hnz::Component::Type, hnz::owner<hnz::Component>>> components;

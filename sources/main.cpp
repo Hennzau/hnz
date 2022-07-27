@@ -35,6 +35,8 @@ struct PlayerMovement : public hnz::System {
     static constexpr Type TYPE     = hnz::hash ("PlayerMovementSystem");
     static constexpr auto REQUIRED = { Position::TYPE, Velocity::TYPE };
 
+    static constexpr auto USING = hnz::System::Use::EVERY_TICK;
+
     void operator() (hnz::f64 delta,
                      hnz::entity entity,
                      hnz::set<hnz::entity>& subscribers,
@@ -47,11 +49,6 @@ int main () {
     auto app = hnz::App {};
     app.build ();
 
-    auto work = std::thread ([&app] () {
-        std::this_thread::sleep_for (std::chrono::seconds (3));
-        app.running ().set (false);
-    });
-
     auto player = app.spawn ();             // 1
     auto weapon = app.spawn (player);   // 2
     auto armor  = app.spawn (player);   // 3
@@ -59,12 +56,13 @@ int main () {
     auto wings  = app.spawn (player);   // 5
     auto fire   = app.spawn (wings);    // 6
 
-    app.add_component<Position> (player, 0.0f, 0.0f);
-    app.add_component<Velocity> (player, 1.0f, 0.0f);
+    app.kill (player,
+              true);
 
-    app.add_component<Position> (weapon, 0.0f, 0.0f);
-
-    app.kill_all (player);
+    auto work = std::thread ([&app] () {
+        std::this_thread::sleep_for (std::chrono::seconds (2));
+        app.running ().set (false);
+    });
 
     while (app.running ().is ()) {
         app.run ();
@@ -73,16 +71,14 @@ int main () {
     work.join ();
     app.join ();
 
-    /*
     std::cout << "Total entities : " << app.entities ().size () << std::endl;
-
     for (const auto& [parent, entities]: app.parents ()) {
         std::cout << parent << " : ";
         for (const auto& entity: entities) {
             std::cout << entity << " ";
         }
         std::cout << std::endl;
-    } */
+    }
 
     return 0;
 }
