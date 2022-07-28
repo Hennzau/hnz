@@ -11,7 +11,6 @@
 #include <hnz/ecs/component.hpp>
 
 #include <hnz/safe/safe_bool.hpp>
-#include <hnz/safe/safe_set.hpp>
 #include <hnz/safe/safe_map.hpp>
 #include <hnz/safe/safe_queue.hpp>
 #include <hnz/safe/safe_vector.hpp>
@@ -20,13 +19,11 @@ namespace hnz {
     class App {
         public:
 
-            App () = default;
+            App ();
 
             ~App () = default;
 
             void join ();
-
-            void build ();
 
             void run ();
 
@@ -42,15 +39,15 @@ namespace hnz {
 
             auto spawn () -> hnz::entity;
 
-            auto spawn_set (hnz::u64 count) -> hnz::set<hnz::entity>;
+            auto spawn_group (hnz::u64 count) -> hnz::vector<hnz::entity>;
 
             auto spawn (hnz::entity& parent) -> hnz::entity;
 
-            auto spawn_set (hnz::entity& parent, hnz::u64 count) -> hnz::set<hnz::entity>;
+            auto spawn_group (hnz::entity& parent, hnz::u64 count) -> hnz::vector<hnz::entity>;
 
             auto exists (hnz::entity entity) const -> bool;
 
-            auto exists (hnz::set<hnz::entity> entities) const -> bool;
+            auto exists (hnz::vector<hnz::entity> entities) const -> bool;
 
             auto kill (hnz::entity& entity, bool genealogy = false) -> void;
 
@@ -74,7 +71,7 @@ namespace hnz {
             }
 
             template<typename T, typename... Args>
-            auto add (hnz::set<entity>& entities, Args&& ... args) -> void {
+            auto add (hnz::vector<entity>& entities, Args&& ... args) -> void {
                 static_assert (std::is_base_of<hnz::Component, T>::value,
                                "T must be a Component");
 
@@ -109,7 +106,7 @@ namespace hnz {
             }
 
             template<typename T>
-            auto remove (hnz::set<entity>& entities) -> void {
+            auto remove (hnz::vector<entity>& entities) -> void {
                 static_assert (std::is_base_of<hnz::Component, T>::value,
                                "T must be a Component");
 
@@ -152,7 +149,6 @@ namespace hnz {
 
                 return *static_cast<T*> (m_safe.components[entity][T::TYPE].get ());
             }
-
 
 
         private:
@@ -200,8 +196,8 @@ namespace hnz {
             struct safe {
                 hnz::safe::queue<commands> commands;
 
-                hnz::safe::set<hnz::entity>                        entities;
-                hnz::safe::map<hnz::entity, hnz::set<hnz::entity>> parents;
+                hnz::safe::vector<hnz::entity>                        entities;
+                hnz::safe::map<hnz::entity, hnz::vector<hnz::entity>> parents;
 
                 hnz::safe::map<hnz::entity, hnz::map<hnz::Component::Type, hnz::owner<hnz::Component>>> components;
             }                    m_safe;

@@ -46,14 +46,17 @@ namespace hnz::safe {
                 return m_vector[index];
             }
 
-            void erase (size_t index) {
+            void erase (typename hnz::vector<T>::const_iterator it) {
                 std::lock_guard<std::mutex> lock (m_mutex);
-                m_vector.erase (m_vector.begin () + index);
+                m_vector.erase (it);
             }
 
             bool contains (T const& value) const {
                 std::lock_guard<std::mutex> lock (m_mutex);
-                return m_vector.find (value) != m_vector.end ();
+
+                return std::find (m_vector.cbegin (),
+                                  m_vector.cend (),
+                                  value) != m_vector.cend ();
             }
 
             bool empty () const {
@@ -71,9 +74,24 @@ namespace hnz::safe {
                 return m_vector.begin ();
             }
 
+            auto cbegin () const {
+                std::lock_guard<std::mutex> lock (m_mutex);
+                return m_vector.cbegin ();
+            }
+
             auto end () const {
                 std::lock_guard<std::mutex> lock (m_mutex);
                 return m_vector.end ();
+            }
+
+            auto cend () const {
+                std::lock_guard<std::mutex> lock (m_mutex);
+                return m_vector.cend ();
+            }
+
+            auto size () const {
+                std::lock_guard<std::mutex> lock (m_mutex);
+                return m_vector.size ();
             }
 
         private:

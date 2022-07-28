@@ -5,16 +5,7 @@
 
 #include <iostream>
 
-void hnz::App::join () {
-    m_ecs_thread.join ();
-}
-
-void hnz::App::run () {
-    std::this_thread::sleep_for (std::chrono::milliseconds (200));
-    std::cout << "Hello, World!" << std::endl;
-}
-
-void hnz::App::build () {
+hnz::App::App () {
     m_running.set (true);
 
     m_ecs_thread = std::thread ([&] () {
@@ -32,7 +23,7 @@ void hnz::App::build () {
                                 auto entity = command.entity;
                                 auto parent = command.parent;
 
-                                m_safe.parents[parent].insert (entity);
+                                m_safe.parents[parent].emplace_back (entity);
 
                                 std::cout << "Parenting entity : " << entity << " is child of : " << parent << std::endl;
                             } else if constexpr (std::is_same_v<command_type, UnParentingUnknownCommand>) {
@@ -53,7 +44,9 @@ void hnz::App::build () {
                                 auto entity = command.entity;
                                 auto parent = command.parent;
 
-                                m_safe.parents[parent].erase (entity);
+                                m_safe.parents[parent].erase (std::find (m_safe.parents[parent].cbegin (),
+                                                                         m_safe.parents[parent].cend (),
+                                                                         entity));
 
                                 std::cout << "UnParenting entity : " << entity << " from : " << parent << std::endl;
                             } else if constexpr (std::is_same_v<command_type, KillCommand>) {
@@ -69,7 +62,10 @@ void hnz::App::build () {
                                     }
                                 }
 
-                                m_safe.entities.erase (entity);
+                                m_safe.entities.erase (std::find (m_safe.entities.cbegin (),
+                                                                  m_safe.entities.cend (),
+                                                                  entity));
+
                                 m_safe.parents.erase (entity);
                                 m_safe.components[entity].clear ();
 
@@ -93,25 +89,35 @@ void hnz::App::build () {
                             }
                         },
                         command_var);
-
             m_safe.commands.pop ();
         }
     });
 }
 
+void hnz::App::join () {
+    m_ecs_thread.join ();
+}
+
+void hnz::App::run () {
+    std::this_thread::sleep_for (std::chrono::milliseconds (200));
+    std::cout << "Hello, World!" << std::endl;
+
+    /* Systems */
+}
+
 auto hnz::App::spawn () -> hnz::entity {
     auto entity = m_next_entity++;
 
-    m_safe.entities.insert (entity);
+    m_safe.entities.emplace_back (entity);
 
     return entity;
 }
 
-auto hnz::App::spawn_set (hnz::u64 count) -> hnz::set<hnz::entity> {
-    auto result = hnz::set<hnz::entity> {};
+auto hnz::App::spawn_group (hnz::u64 count) -> hnz::vector<hnz::entity> {
+    auto result = hnz::vector<hnz::entity> {};
 
     for (auto i = 0u; i < count; ++i) {
-        result.insert (spawn ());
+        result.emplace_back (spawn ());
     }
 
     return result;
@@ -128,8 +134,8 @@ auto hnz::App::spawn (hnz::entity& parent) -> hnz::entity {
     return entity;
 }
 
-auto hnz::App::spawn_set (hnz::entity& parent, hnz::u64 count) -> hnz::set<hnz::entity> {
-    auto result = spawn_set (count);
+auto hnz::App::spawn_group (hnz::entity& parent, hnz::u64 count) -> hnz::vector<hnz::entity> {
+    auto result = spawn_group (count);
 
     for (const auto& entity: result) {
         m_safe.commands.push (ParentingCommand {
@@ -149,7 +155,7 @@ auto hnz::App::exists (hnz::entity entity) const -> bool {
     return m_safe.entities.contains (entity);
 }
 
-auto hnz::App::exists (hnz::set<hnz::entity> entities) const -> bool {
+auto hnz::App::exists (hnz::vector<hnz::entity> entities) const -> bool {
     return std::ranges::all_of (entities,
                                 [&] (const auto entity) {
                                     return exists (entity);

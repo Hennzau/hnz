@@ -47,7 +47,6 @@ struct PlayerMovement : public hnz::System {
 
 int main () {
     auto app = hnz::App {};
-    app.build ();
 
     auto player = app.spawn ();             // 1
     auto weapon = app.spawn (player);   // 2
@@ -67,7 +66,7 @@ int main () {
                        1.0f,
                        0.0f);
 
-    auto particles = app.spawn_set (player,
+    auto particles = app.spawn_group (player,
                                     100);
 
     auto work = std::thread ([&app] () {
@@ -88,7 +87,7 @@ int main () {
     std::cout << "Final Position of the player : " << position.x << " / " << position.y << std::endl;
 
     std::cout << "Total entities : " << app.entities ().size () << std::endl;
-    
+
     for (const auto& [parent, entities]: app.parents ()) {
         std::cout << parent << " : ";
         for (const auto& entity: entities) {
