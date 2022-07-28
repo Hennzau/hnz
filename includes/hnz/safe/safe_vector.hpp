@@ -21,6 +21,16 @@ namespace hnz::safe {
                 m_vector.push_back (std::move (value));
             }
 
+            void emplace_back (T&& value) {
+                std::lock_guard<std::mutex> lock (m_mutex);
+                m_vector.emplace_back (std::move (value));
+            }
+
+            void emplace_back (T const& value) {
+                std::lock_guard<std::mutex> lock (m_mutex);
+                m_vector.emplace_back (value);
+            }
+
             void pop_back () {
                 std::lock_guard<std::mutex> lock (m_mutex);
                 m_vector.pop_back ();

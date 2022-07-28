@@ -53,11 +53,9 @@ void hnz::App::build () {
                                 auto entity = command.entity;
                                 auto parent = command.parent;
 
-                                if (m_safe.parents[parent].contains (entity)) {
-                                    m_safe.parents[parent].erase (entity);
+                                m_safe.parents[parent].erase (entity);
 
-                                    std::cout << "UnParenting entity : " << entity << " from : " << parent << std::endl;
-                                }
+                                std::cout << "UnParenting entity : " << entity << " from : " << parent << std::endl;
                             } else if constexpr (std::is_same_v<command_type, KillCommand>) {
                                 auto entity    = command.entity;
                                 auto genealogy = command.genealogy;
@@ -109,6 +107,16 @@ auto hnz::App::spawn () -> hnz::entity {
     return entity;
 }
 
+auto hnz::App::spawn_set (hnz::u64 count) -> hnz::set<hnz::entity> {
+    auto result = hnz::set<hnz::entity> {};
+
+    for (auto i = 0u; i < count; ++i) {
+        result.insert (spawn ());
+    }
+
+    return result;
+}
+
 auto hnz::App::spawn (hnz::entity& parent) -> hnz::entity {
     auto entity = spawn ();
 
@@ -120,16 +128,32 @@ auto hnz::App::spawn (hnz::entity& parent) -> hnz::entity {
     return entity;
 }
 
+auto hnz::App::spawn_set (hnz::entity& parent, hnz::u64 count) -> hnz::set<hnz::entity> {
+    auto result = spawn_set (count);
+
+    for (const auto& entity: result) {
+        m_safe.commands.push (ParentingCommand {
+                .entity = entity,
+                .parent = parent
+        });
+    }
+
+    return result;
+}
+
 auto hnz::App::exists (hnz::entity entity) const -> bool {
     if (entity == hnz::INVALID_ENTITY) {
         return false;
     }
 
-    auto it = std::find (m_safe.entities.cbegin (),
-                         m_safe.entities.cend (),
-                         entity);
+    return m_safe.entities.contains (entity);
+}
 
-    return it != m_safe.entities.cend ();
+auto hnz::App::exists (hnz::set<hnz::entity> entities) const -> bool {
+    return std::ranges::all_of (entities,
+                                [&] (const auto entity) {
+                                    return exists (entity);
+                                });;
 }
 
 auto hnz::App::kill (hnz::entity& entity, bool genealogy) -> void {

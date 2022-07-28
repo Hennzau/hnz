@@ -14,12 +14,18 @@ namespace hnz::safe {
 
             void insert (Key const& key, Val const& value) {
                 std::lock_guard<std::mutex> lock (m_mutex);
-                m_map.insert (std::make_pair (key, value));
+                m_map.insert (std::make_pair (key,
+                                              value));
             }
 
             Val& operator[] (Key const& key) {
                 std::lock_guard<std::mutex> lock (m_mutex);
                 return m_map[key];
+            }
+
+            Val const& operator[] (Key const& key) const {
+                std::lock_guard<std::mutex> lock (m_mutex);
+                return m_map.at (key);
             }
 
             void erase (Key const& key) {

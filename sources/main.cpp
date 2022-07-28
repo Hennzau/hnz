@@ -56,8 +56,19 @@ int main () {
     auto wings  = app.spawn (player);   // 5
     auto fire   = app.spawn (wings);    // 6
 
-    app.kill (player,
+    app.kill (wings,
               true);
+
+    app.add<Position> (player,
+                       0.0f,
+                       0.0f);
+
+    app.add<Velocity> (player,
+                       1.0f,
+                       0.0f);
+
+    auto particles = app.spawn_set (player,
+                                    100);
 
     auto work = std::thread ([&app] () {
         std::this_thread::sleep_for (std::chrono::seconds (2));
@@ -71,7 +82,13 @@ int main () {
     work.join ();
     app.join ();
 
+    auto& position = app.component<Position> (player);
+    auto& velocity = app.component<Velocity> (player);
+
+    std::cout << "Final Position of the player : " << position.x << " / " << position.y << std::endl;
+
     std::cout << "Total entities : " << app.entities ().size () << std::endl;
+    
     for (const auto& [parent, entities]: app.parents ()) {
         std::cout << parent << " : ";
         for (const auto& entity: entities) {

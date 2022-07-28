@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include <string_view>
 #include <mutex>
 #include <variant>
@@ -41,14 +42,30 @@ namespace hnz {
 
             auto spawn () -> hnz::entity;
 
+            auto spawn_set (hnz::u64 count) -> hnz::set<hnz::entity>;
+
             auto spawn (hnz::entity& parent) -> hnz::entity;
+
+            auto spawn_set (hnz::entity& parent, hnz::u64 count) -> hnz::set<hnz::entity>;
 
             auto exists (hnz::entity entity) const -> bool;
 
+            auto exists (hnz::set<hnz::entity> entities) const -> bool;
+
             auto kill (hnz::entity& entity, bool genealogy = false) -> void;
 
+            /* components */
+
             template<typename T, typename... Args>
-            auto add_component (hnz::entity& entity, Args&& ... args) -> void {
+            auto add (hnz::entity& entity, Args&& ... args) -> void {
+                static_assert (std::is_base_of<hnz::Component, T>::value,
+                               "T must be a Component");
+
+                static_assert (T::TYPE != hnz::Component::INVALID_TYPE,
+                               "T must have T::type defined");
+
+                assert (exists (entity));
+
                 m_safe.commands.push (AddComponentCommand {
                         .entity = entity,
                         .type = T::TYPE,
@@ -56,13 +73,87 @@ namespace hnz {
                 });
             }
 
+            template<typename T, typename... Args>
+            auto add (hnz::set<entity>& entities, Args&& ... args) -> void {
+                static_assert (std::is_base_of<hnz::Component, T>::value,
+                               "T must be a Component");
+
+                static_assert (T::TYPE != hnz::Component::INVALID_TYPE,
+                               "T must have T::type defined");
+
+                assert (exists (entities));
+
+                for (const auto& entity: entities) {
+                    m_safe.commands.push (AddComponentCommand {
+                            .entity = entity,
+                            .type = T::TYPE,
+                            .component = std::make_unique<T> (std::forward<Args> (args)...)
+                    });
+                }
+            }
+
             template<typename T>
-            auto remove_component (hnz::entity& entity) -> void {
+            auto remove (hnz::entity& entity) -> void {
+                static_assert (std::is_base_of<hnz::Component, T>::value,
+                               "T must be a Component");
+
+                static_assert (T::TYPE != hnz::Component::INVALID_TYPE,
+                               "T must have T::type defined");
+
+                assert (exists (entity));
+
                 m_safe.commands.push (RemoveComponentCommand {
                         .entity = entity,
                         .type = T::TYPE
                 });
             }
+
+            template<typename T>
+            auto remove (hnz::set<entity>& entities) -> void {
+                static_assert (std::is_base_of<hnz::Component, T>::value,
+                               "T must be a Component");
+
+                static_assert (T::TYPE != hnz::Component::INVALID_TYPE,
+                               "T must have T::type defined");
+
+                assert (exists (entities));
+
+                for (const auto& entity: entities) {
+                    m_safe.commands.push (RemoveComponentCommand {
+                            .entity = entity,
+                            .type = T::TYPE
+                    });
+                }
+            }
+
+            template<typename T>
+            auto has (hnz::entity entity) const -> bool {
+                static_assert (std::is_base_of<hnz::Component, T>::value,
+                               "T must be a Component");
+
+                static_assert (T::TYPE != hnz::Component::INVALID_TYPE,
+                               "T must have T::type defined");
+
+                assert (exists (entity));
+
+                return m_safe.components[entity].contains (T::TYPE);
+            }
+
+            template<typename T>
+            auto component (hnz::entity entity) const -> T& {
+                assert (has<T> (entity));
+
+                return *static_cast<T*> (m_safe.components[entity][T::TYPE].get ());
+            }
+
+            template<typename T>
+            auto component (hnz::entity entity) -> T& {
+                assert (has<T> (entity));
+
+                return *static_cast<T*> (m_safe.components[entity][T::TYPE].get ());
+            }
+
+
 
         private:
 
