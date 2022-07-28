@@ -23,6 +23,8 @@ hnz::App::App () {
                                 auto entity = command.entity;
                                 auto parent = command.parent;
 
+                                assert (exists ({ entity, parent }));
+
                                 m_safe.parents[parent].emplace_back (entity);
 
                                 std::cout << "Parenting entity : " << entity << " is child of : " << parent << std::endl;
@@ -44,6 +46,8 @@ hnz::App::App () {
                                 auto entity = command.entity;
                                 auto parent = command.parent;
 
+                                assert (exists ({ parent }));
+
                                 m_safe.parents[parent].erase (std::find (m_safe.parents[parent].cbegin (),
                                                                          m_safe.parents[parent].cend (),
                                                                          entity));
@@ -52,6 +56,8 @@ hnz::App::App () {
                             } else if constexpr (std::is_same_v<command_type, KillCommand>) {
                                 auto entity    = command.entity;
                                 auto genealogy = command.genealogy;
+
+                                assert (exists (entity));
 
                                 if (genealogy) {
                                     for (auto child: m_safe.parents[entity]) {
@@ -74,12 +80,16 @@ hnz::App::App () {
                                 auto entity = command.entity;
                                 auto type   = command.type;
 
+                                assert (exists (entity));
+
                                 m_safe.components[entity][type] = std::move (command.component);
 
                                 std::cout << "Adding component : " << type << " to entity : " << entity << std::endl;
                             } else if constexpr (std::is_same_v<command_type, RemoveComponentCommand>) {
                                 auto entity = command.entity;
                                 auto type   = command.type;
+
+                                assert (exists (entity));
 
                                 m_safe.components[entity].erase (type);
 
@@ -155,7 +165,7 @@ auto hnz::App::exists (hnz::entity entity) const -> bool {
     return m_safe.entities.contains (entity);
 }
 
-auto hnz::App::exists (hnz::vector<hnz::entity> entities) const -> bool {
+auto hnz::App::exists (const hnz::vector<hnz::entity>& entities) const -> bool {
     return std::ranges::all_of (entities,
                                 [&] (const auto entity) {
                                     return exists (entity);
@@ -173,4 +183,19 @@ auto hnz::App::kill (hnz::entity& entity, bool genealogy) -> void {
     m_safe.commands.push (UnParentingUnknownCommand {
             .entity = entity
     });
+}
+
+auto hnz::App::view (const std::vector<hnz::Component::Type>& components) const -> hnz::vector<hnz::entity> {
+    auto result = hnz::vector<hnz::entity> {};
+
+    for (const auto& [entity, components_map]: m_safe.components) {
+        if (std::ranges::all_of (components,
+                                 [&] (const auto component) {
+                                     return components_map.contains (component);
+                                 })) {
+            result.emplace_back (entity);
+        }
+    }
+
+    return result;
 }

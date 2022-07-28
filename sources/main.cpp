@@ -58,16 +58,13 @@ int main () {
     app.kill (wings,
               true);
 
-    app.add<Position> (player,
+    app.add<Position> ({ player, armor, ammo },
                        0.0f,
                        0.0f);
 
-    app.add<Velocity> (player,
+    app.add<Velocity> ({ player, fire },
                        1.0f,
                        0.0f);
-
-    auto particles = app.spawn_group (player,
-                                    100);
 
     auto work = std::thread ([&app] () {
         std::this_thread::sleep_for (std::chrono::seconds (2));
@@ -84,6 +81,8 @@ int main () {
     auto& position = app.component<Position> (player);
     auto& velocity = app.component<Velocity> (player);
 
+    auto view = app.view ({ Position::TYPE });
+
     std::cout << "Final Position of the player : " << position.x << " / " << position.y << std::endl;
 
     std::cout << "Total entities : " << app.entities ().size () << std::endl;
@@ -95,6 +94,7 @@ int main () {
         }
         std::cout << std::endl;
     }
+
 
     return 0;
 }

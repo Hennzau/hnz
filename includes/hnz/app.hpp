@@ -47,7 +47,7 @@ namespace hnz {
 
             auto exists (hnz::entity entity) const -> bool;
 
-            auto exists (hnz::vector<hnz::entity> entities) const -> bool;
+            auto exists (const hnz::vector<hnz::entity>& entities) const -> bool;
 
             auto kill (hnz::entity& entity, bool genealogy = false) -> void;
 
@@ -71,7 +71,7 @@ namespace hnz {
             }
 
             template<typename T, typename... Args>
-            auto add (hnz::vector<entity>& entities, Args&& ... args) -> void {
+            auto add (const hnz::vector<entity>& entities, Args&& ... args) -> void {
                 static_assert (std::is_base_of<hnz::Component, T>::value,
                                "T must be a Component");
 
@@ -106,7 +106,7 @@ namespace hnz {
             }
 
             template<typename T>
-            auto remove (hnz::vector<entity>& entities) -> void {
+            auto remove (const hnz::vector<entity>& entities) -> void {
                 static_assert (std::is_base_of<hnz::Component, T>::value,
                                "T must be a Component");
 
@@ -150,6 +150,9 @@ namespace hnz {
                 return *static_cast<T*> (m_safe.components[entity][T::TYPE].get ());
             }
 
+            /* views */
+
+            auto view (const hnz::vector<hnz::Component::Type>& components) const -> hnz::vector<hnz::entity>;
 
         private:
 

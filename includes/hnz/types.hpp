@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <array>
 #include <queue>
+#include <span>
 
 namespace hnz {
     using u8 = std::uint8_t;
@@ -58,10 +59,14 @@ namespace hnz {
     template<typename T>
     using vector = std::vector<T>;
 
+    template<typename T>
+    using span = std::span<T>;
+
     constexpr auto hash (std::string_view str) noexcept -> hnz::u64 {
         return std::empty (str) ? 0xcbf29ce484222325UL
                                 : (hnz::as<hnz::u64> (str[0])
-                                   ^ hash (str.substr (1, std::size (str) - 1))) * 0x100000001b3UL;
+                                   ^ hash (str.substr (1,
+                                                       std::size (str) - 1))) * 0x100000001b3UL;
 
     }
 }
