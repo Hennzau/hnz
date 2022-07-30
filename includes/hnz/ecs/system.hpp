@@ -17,12 +17,12 @@ namespace hnz {
         static constexpr Type INVALID_TYPE = 0;
         static constexpr Type TYPE         = INVALID_TYPE;
 
-        static constexpr auto REQUIRED = { hnz::Component::INVALID_TYPE };
-        static constexpr auto USING    = Use::ON_NOTIFY;
+        static constexpr auto REQUIREMENTS = { hnz::Component::INVALID_TYPE };
+        static constexpr auto USING        = Use::ON_NOTIFY;
 
-        virtual void operator() (hnz::f64 delta,
+        virtual void operator() (hnz::f32 delta,
                                  hnz::entity entity,
-                                 hnz::set<hnz::entity>& subscribers,
-                                 hnz::map<hnz::Component::Type, hnz::raw<hnz::Component>>& components) {}
+                                 const hnz::map<hnz::Component::Type, hnz::raw<hnz::Component>>& components,
+                                 const hnz::vector<hnz::entity>& subscribers) {}
     };
 }

@@ -75,6 +75,11 @@ hnz::App::App () {
                                 m_safe.parents.erase (entity);
                                 m_safe.components[entity].clear ();
 
+                                m_safe.commands.push (UpdateEntityInUnknownSystemsCommand {
+                                        .entity = entity,
+                                        .added = false
+                                });
+
                                 std::cout << "Killing entity : " << entity << std::endl;
                             } else if constexpr (std::is_same_v<command_type, AddComponentCommand>) {
                                 auto entity = command.entity;
@@ -83,6 +88,11 @@ hnz::App::App () {
                                 assert (exists (entity));
 
                                 m_safe.components[entity][type] = std::move (command.component);
+
+                                m_safe.commands.push (UpdateEntityInUnknownSystemsCommand {
+                                        .entity = entity,
+                                        .added = true
+                                });
 
                                 std::cout << "Adding component : " << type << " to entity : " << entity << std::endl;
                             } else if constexpr (std::is_same_v<command_type, RemoveComponentCommand>) {
@@ -93,7 +103,62 @@ hnz::App::App () {
 
                                 m_safe.components[entity].erase (type);
 
+                                m_safe.commands.push (UpdateEntityInUnknownSystemsCommand {
+                                        .entity = entity,
+                                        .added = false
+                                });
+
                                 std::cout << "Removing component : " << type << " from entity : " << entity << std::endl;
+                            } else if constexpr (std::is_same_v<command_type, UpdateEntityInUnknownSystemsCommand>) {
+                                auto entity = command.entity;
+                                auto added  = command.added;
+
+                                for (auto& [key, system]: m_safe.systems) {
+                                    m_safe.commands.push (UpdateEntityInKnownSystemCommand {
+                                            .entity = entity,
+                                            .key = key,
+                                            .added = added
+                                    });
+                                }
+                            } else if constexpr (std::is_same_v<command_type, UpdateEntityInKnownSystemCommand>) {
+                                auto entity = command.entity;
+                                auto key    = command.key;
+                                auto added  = command.added;
+                                auto& requirements = m_safe.systems[key].requirements;
+
+                                auto valid = std::all_of (requirements.begin (),
+                                                          requirements.end (),
+                                                          [&] (auto&& requirement) {
+                                                              return m_safe.components[entity].count (requirement) > 0;
+                                                          });
+
+                                auto registered = is_registered (entity,
+                                                                 key);
+
+                                if (added and valid and not registered) {
+                                    auto components = hnz::map<hnz::Component::Type, hnz::raw<hnz::Component>> {};
+                                    for (auto& requirement: requirements) {
+                                        components[requirement] = m_safe.components[entity][requirement].get ();
+                                    }
+
+                                    m_safe.entities_in_systems[key].emplace_back (EntityInSystem {
+                                            .entity = entity,
+                                            .components = std::move (components)
+                                    });
+
+                                    std::cout << "Updating entity: " << entity << " in system: " << key << std::endl;
+                                } else if (added and registered and not valid) {
+                                    const auto& entity_in_system = std::find_if (m_safe.entities_in_systems[key].cbegin (),
+                                                                                 m_safe.entities_in_systems[key].cend (),
+                                                                                 [&] (const auto& entity_in_system) {
+                                                                                     return entity_in_system.entity ==
+                                                                                            entity;
+                                                                                 });
+
+                                    m_safe.entities_in_systems[key].erase (entity_in_system);
+
+                                    std::cout << "Updating entity: " << entity << " in system: " << key << std::endl;
+                                }
                             } else {
                                 std::cout << "Unknown command " << std::endl;
                             }
@@ -198,4 +263,11 @@ auto hnz::App::view (const std::vector<hnz::Component::Type>& components) const 
     }
 
     return result;
+}
+
+auto hnz::App::is_registered (hnz::entity entity, hnz::System::Type type) -> bool {
+    return not std::ranges::all_of (m_safe.entities_in_systems[type],
+                                    [&] (const auto& entity_in_system) {
+                                        return entity_in_system.entity != entity;
+                                    });
 }

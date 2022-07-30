@@ -4,11 +4,13 @@
 #include <string_view>
 #include <mutex>
 #include <variant>
+#include <memory>
 
 #include <hnz/types.hpp>
 
 #include <hnz/ecs/entity.hpp>
 #include <hnz/ecs/component.hpp>
+#include <hnz/ecs/system.hpp>
 
 #include <hnz/safe/safe_bool.hpp>
 #include <hnz/safe/safe_map.hpp>
@@ -34,6 +36,10 @@ namespace hnz {
             [[nodiscard]] auto& entities () const { return m_safe.entities; }
 
             [[nodiscard]] auto& parents () const { return m_safe.parents; }
+
+            [[nodiscard]] auto& systems () const { return m_safe.systems; }
+
+            [[nodiscard]] auto& entities_in_systems () const { return m_safe.entities_in_systems; }
 
             /* entities */
 
@@ -154,11 +160,49 @@ namespace hnz {
 
             auto view (const hnz::vector<hnz::Component::Type>& components) const -> hnz::vector<hnz::entity>;
 
+            /* systems */
+
+            auto is_registered (hnz::entity entity, hnz::System::Type type) -> bool;
+
+            template<typename T>
+            auto record () -> void {
+                static_assert (std::is_base_of<hnz::System, T>::value,
+                               "T must be a System");
+
+                static_assert (T::TYPE != hnz::System::INVALID_TYPE,
+                               "T must have T::type defined");
+
+                m_safe.systems[T::TYPE] = AppSystem {
+                        .ptr = std::make_unique<T> (),
+                        .requirements = T::REQUIREMENTS,
+                };
+
+                for (const auto& entity: m_safe.entities) {
+                    m_safe.commands.push (UpdateEntityInKnownSystemCommand {
+                            .entity = entity,
+                            .key = T::TYPE,
+                            .added = true
+                    });
+                }
+            }
+
         private:
 
             /* App */
 
             hnz::safe::safe_bool m_running;
+
+            struct AppSystem {
+                hnz::owner<hnz::System>          ptr;
+                hnz::ilist<hnz::Component::Type> requirements;
+            };
+
+            struct EntityInSystem {
+                hnz::entity entity;
+
+                hnz::map<hnz::Component::Type, hnz::raw<hnz::Component>> components;
+                hnz::vector<hnz::entity>                                 subscribers;
+            };
 
             /* These are the commands that are sent to the app. */
 
@@ -192,7 +236,26 @@ namespace hnz {
                 hnz::Component::Type type;
             };
 
-            using commands = std::variant<ParentingCommand, UnParentingUnknownCommand, UnParentingKnownCommand, KillCommand, AddComponentCommand, RemoveComponentCommand>;
+            struct UpdateEntityInUnknownSystemsCommand {
+                hnz::entity entity;
+                bool        added;
+            };
+
+            struct UpdateEntityInKnownSystemCommand {
+                hnz::entity       entity;
+                hnz::System::Type key;
+                bool              added;
+            };
+
+            using commands = std::variant<
+                    ParentingCommand,
+                    UnParentingUnknownCommand,
+                    UnParentingKnownCommand,
+                    KillCommand,
+                    AddComponentCommand,
+                    RemoveComponentCommand,
+                    UpdateEntityInUnknownSystemsCommand,
+                    UpdateEntityInKnownSystemCommand>;
 
             /* Safe objects */
 
@@ -203,7 +266,11 @@ namespace hnz {
                 hnz::safe::map<hnz::entity, hnz::vector<hnz::entity>> parents;
 
                 hnz::safe::map<hnz::entity, hnz::map<hnz::Component::Type, hnz::owner<hnz::Component>>> components;
-            }                    m_safe;
+
+                hnz::safe::map<hnz::System::Type, AppSystem>                   systems;
+                hnz::safe::map<hnz::System::Type, hnz::vector<EntityInSystem>> entities_in_systems;
+
+            } m_safe;
 
             hnz::u32 m_next_entity = 1;
 
