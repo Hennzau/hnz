@@ -73,6 +73,17 @@ hnz::App::App () {
                                                                   entity));
 
                                 m_safe.parents.erase (entity);
+
+                                for (auto& [key, system]: m_safe.systems) {
+                                    if (std::find_if (m_safe.entities_in_systems[key].cbegin (),
+                                                      m_safe.entities_in_systems[key].cend (),
+                                                      [&] (auto&& entity_in_system) {
+                                                          return entity_in_system.entity == entity;
+                                                      }) != m_safe.entities_in_systems[key].cend ()) {
+
+                                    }
+                                }
+
                                 m_safe.components[entity].clear ();
 
                                 m_safe.commands.push (UpdateEntityInUnknownSystemsCommand {
@@ -141,6 +152,13 @@ hnz::App::App () {
                                         components[requirement] = m_safe.components[entity][requirement].get ();
                                     }
 
+                                    if (m_safe.systems[key].usage == hnz::System::Usage::ON_REGISTRATION) {
+                                        m_safe.systems[key].ptr->operator() (0.0f,
+                                                                             entity,
+                                                                             components,
+                                                                             {});
+                                    }
+
                                     m_safe.entities_in_systems[key].emplace_back (EntityInSystem {
                                             .entity = entity,
                                             .components = std::move (components)
@@ -178,6 +196,8 @@ void hnz::App::run () {
     std::cout << "Hello, World!" << std::endl;
 
     /* Systems */
+
+
 }
 
 auto hnz::App::spawn () -> hnz::entity {

@@ -174,6 +174,7 @@ namespace hnz {
 
                 m_safe.systems[T::TYPE] = AppSystem {
                         .ptr = std::make_unique<T> (),
+                        .usage = T::USAGE,
                         .requirements = T::REQUIREMENTS,
                 };
 
@@ -194,6 +195,7 @@ namespace hnz {
 
             struct AppSystem {
                 hnz::owner<hnz::System>          ptr;
+                hnz::System::Usage               usage;
                 hnz::ilist<hnz::Component::Type> requirements;
             };
 

@@ -5,11 +5,11 @@
 
 namespace hnz {
     struct System {
-        enum class Use {
-            CREATION,       // Only once at after creation
-            DESTRUCTION,    // Only once at before destruction
-            EVERY_TICK,     // Every tick
-            ON_NOTIFY,      // When notified in another system
+        enum class Usage {
+            ON_REGISTRATION,    // Only once when an entity is registered.
+            ON_DELETION,        // Only once when an entity is deleted from a system. Not always when it is killed.
+            ON_NOTIFICATION,    // When notified in another system
+            ON_TICK,            // Every tick
         };
 
         using Type = hnz::u64;
@@ -18,7 +18,7 @@ namespace hnz {
         static constexpr Type TYPE         = INVALID_TYPE;
 
         static constexpr auto REQUIREMENTS = { hnz::Component::INVALID_TYPE };
-        static constexpr auto USING        = Use::ON_NOTIFY;
+        static constexpr auto USAGE        = Usage::ON_NOTIFICATION;
 
         virtual void operator() (hnz::f32 delta,
                                  hnz::entity entity,

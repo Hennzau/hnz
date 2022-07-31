@@ -35,7 +35,7 @@ struct PlayerMovement : public hnz::System {
     static constexpr Type TYPE         = hnz::hash ("PlayerMovementSystem");
     static constexpr auto REQUIREMENTS = { Position::TYPE, Velocity::TYPE };
 
-    static constexpr auto USING = hnz::System::Use::EVERY_TICK;
+    static constexpr auto USING = hnz::System::Usage::ON_TICK;
 
     void operator() (hnz::f32 delta,
                      hnz::entity entity,
@@ -53,7 +53,7 @@ struct PrintPosition : public hnz::System {
     static constexpr Type TYPE         = hnz::hash ("PrintPositionSystem");
     static constexpr auto REQUIREMENTS = { Position::TYPE };
 
-    static constexpr auto USING = hnz::System::Use::ON_NOTIFY;
+    static constexpr auto USAGE = hnz::System::Usage::ON_REGISTRATION;
 
     void operator() (hnz::f32 delta,
                      hnz::entity entity,
@@ -61,7 +61,7 @@ struct PrintPosition : public hnz::System {
                      const hnz::vector<hnz::entity>& subscribers) override {
         auto& position = *hnz::reinterpret<Position*> (components.at (Position::TYPE));
 
-        std::cout << "Position: " << position.x << ", " << position.y << std::endl;
+        std::cout << "Position of entity " << entity << ": " << position.x << ", " << position.y << std::endl;
     }
 };
 
@@ -75,7 +75,7 @@ int main () {
     auto wings  = app.spawn (player);   // 5
     auto fire   = app.spawn (wings);    // 6
 
-    app.add<Position> ({ player, armor, ammo, wings },
+    app.add<Position> ({ player, armor, ammo, wings, fire },
                        0.0f,
                        0.0f);
 
@@ -83,11 +83,11 @@ int main () {
                        1.0f,
                        0.0f);
 
-    app.record<PlayerMovement> ();
-    app.record<PrintPosition> ();
-
     app.kill (wings,
               true);
+
+    app.record<PlayerMovement> ();
+    app.record<PrintPosition> ();
 
     auto work = std::thread ([&app] () {
         std::this_thread::sleep_for (std::chrono::seconds (2));
