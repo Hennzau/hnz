@@ -136,6 +136,8 @@ namespace hnz {
                 return m_safe.components[entity].contains (T::TYPE);
             }
 
+            auto has (hnz::entity entity) const -> bool;
+
             template<typename T>
             auto component (hnz::entity entity) const -> T& {
                 assert (has<T> (entity));
@@ -193,6 +195,18 @@ namespace hnz {
             };
 
             using commands = std::variant<ParentingCommand, UnParentingUnknownCommand, UnParentingKnownCommand, KillCommand, AddComponentCommand, RemoveComponentCommand>;
+
+            auto process_parent (const ParentingCommand& command) -> void;
+
+            auto process_unparent_unknown (const UnParentingUnknownCommand& command) -> void;
+
+            auto process_unparent_known (const UnParentingKnownCommand& command) -> void;
+
+            auto process_kill (const KillCommand& command) -> void;
+
+            auto process_add_component (AddComponentCommand& command) -> void;
+
+            auto process_remove_component (const RemoveComponentCommand& command) -> void;
 
             /* Safe objects */
 

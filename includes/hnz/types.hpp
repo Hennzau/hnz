@@ -38,12 +38,12 @@ namespace hnz {
     using raw = T*;
 
     template<typename T, typename O>
-    static constexpr T as (O& v) noexcept {
+    static constexpr T as (const O& v) noexcept {
         return static_cast<T> (v);
     }
 
     template<typename T, typename O>
-    static constexpr T reinterpret (O& v) noexcept {
+    static constexpr T reinterpret (const O& v) noexcept {
         return reinterpret_cast<T> (v);
     }
 
@@ -62,9 +62,9 @@ namespace hnz {
     template<typename T>
     using span = std::span<T>;
 
-    constexpr auto hash (std::string_view str) noexcept -> hnz::u64 {
-        return std::empty (str) ? 0xcbf29ce484222325UL
-                                : (hnz::as<hnz::u64> (str[0])
+    constexpr auto hash (std::string_view str) noexcept -> hnz::u32 {
+        return std::empty (str) ? 2216829733
+                                : (hnz::as<hnz::u32> (str[0])
                                    ^ hash (str.substr (1,
                                                        std::size (str) - 1))) * 0x100000001b3UL;
 

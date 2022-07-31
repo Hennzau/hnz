@@ -4,11 +4,12 @@
 #include <hnz/types.hpp>
 
 #include <hnz/ecs/system.hpp>
+#include <utility>
 
 #include <iostream>
 
 struct Position : public hnz::Component {
-    static constexpr Type TYPE = hnz::hash ("PositionComponent");
+    static constexpr Type TYPE = 2;
 
     Position (float a, float b)
             :
@@ -20,7 +21,7 @@ struct Position : public hnz::Component {
 };
 
 struct Velocity : public hnz::Component {
-    static constexpr Type TYPE = hnz::hash ("VelocityComponent");
+    static constexpr Type TYPE = 3;
 
     Velocity (float a, float b)
             :
@@ -31,17 +32,31 @@ struct Velocity : public hnz::Component {
     float dy;
 };
 
+struct Name : public hnz::Component {
+    static constexpr Type TYPE = 5;
+
+    explicit Name (std::string a)
+            :
+            name { std::move (a) } {}
+
+    std::string name;
+};
+
 struct PlayerMovement : public hnz::System {
     static constexpr Type TYPE     = hnz::hash ("PlayerMovementSystem");
     static constexpr auto REQUIRED = { Position::TYPE, Velocity::TYPE };
 
-    static constexpr auto USING = hnz::System::Use::EVERY_TICK;
+    static constexpr auto USAGE = hnz::System::Usage::ON_TICK;
 
-    void operator() (hnz::f64 delta,
+    void operator() (hnz::f32 delta,
                      hnz::entity entity,
-                     hnz::set<hnz::entity>& subscribers,
-                     hnz::map<hnz::Component::Type, hnz::raw<hnz::Component>>& components) override {
-        std::cout << delta * hnz::as<hnz::f64> (entity) << std::endl;
+                     const hnz::map<hnz::Component::Type, hnz::owner<hnz::Component>>& components,
+                     const hnz::vector<hnz::entity>& subscribers) override {
+        auto& position = *hnz::reinterpret<Position*> (components.at (Position::TYPE).get ());
+        auto& velocity = *hnz::reinterpret<Velocity*> (components.at (Velocity::TYPE).get ());
+
+        position.x += velocity.dx * delta;
+        position.y += velocity.dy * delta;
     }
 };
 
@@ -55,9 +70,6 @@ int main () {
     auto wings  = app.spawn (player);   // 5
     auto fire   = app.spawn (wings);    // 6
 
-    app.kill (wings,
-              true);
-
     app.add<Position> ({ player, armor, ammo },
                        0.0f,
                        0.0f);
@@ -65,6 +77,8 @@ int main () {
     app.add<Velocity> ({ player, fire },
                        1.0f,
                        0.0f);
+
+    app.kill (wings, true);
 
     auto work = std::thread ([&app] () {
         std::this_thread::sleep_for (std::chrono::seconds (2));
@@ -77,24 +91,6 @@ int main () {
 
     work.join ();
     app.join ();
-
-    auto& position = app.component<Position> (player);
-    auto& velocity = app.component<Velocity> (player);
-
-    auto view = app.view ({ Position::TYPE });
-
-    std::cout << "Final Position of the player : " << position.x << " / " << position.y << std::endl;
-
-    std::cout << "Total entities : " << app.entities ().size () << std::endl;
-
-    for (const auto& [parent, entities]: app.parents ()) {
-        std::cout << parent << " : ";
-        for (const auto& entity: entities) {
-            std::cout << entity << " ";
-        }
-        std::cout << std::endl;
-    }
-
 
     return 0;
 }
