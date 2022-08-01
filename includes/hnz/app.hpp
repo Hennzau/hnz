@@ -138,6 +138,8 @@ namespace hnz {
 
             auto has (hnz::entity entity) const -> bool;
 
+            auto has (hnz::entity entity, hnz::Component::Type type) const -> bool;
+
             template<typename T>
             auto component (hnz::entity entity) const -> T& {
                 assert (has<T> (entity));
@@ -224,4 +226,3 @@ namespace hnz {
             std::thread m_ecs_thread;
     };
 }
-

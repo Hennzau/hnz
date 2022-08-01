@@ -7,6 +7,8 @@ auto hnz::App::process_add_component (hnz::App::AddComponentCommand& command) ->
     auto type   = command.type;
 
     assert (exists (entity));
+    assert (not has (entity,
+                     type));
 
     m_safe.components[entity][type].operator= (std::move (command.component));
 

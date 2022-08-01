@@ -7,6 +7,7 @@
 #include <array>
 #include <queue>
 #include <span>
+#include <bitset>
 
 namespace hnz {
     using u8 = std::uint8_t;
@@ -22,8 +23,6 @@ namespace hnz {
     using f32 = float;
     using f64 = double;
 
-#ifdef _MEMORY_
-
     template<typename T>
     using owner = std::unique_ptr<T>;
 
@@ -31,8 +30,6 @@ namespace hnz {
     static constexpr hnz::owner<T> make (Args&& ... args) {
         return std::make_unique<T> (std::forward<Args> (args)...);
     }
-
-#endif
 
     template<typename T>
     using raw = T*;
@@ -62,11 +59,25 @@ namespace hnz {
     template<typename T>
     using span = std::span<T>;
 
-    constexpr auto hash (std::string_view str) noexcept -> hnz::u32 {
+    constexpr auto hash_32 (std::string_view str) noexcept -> hnz::u32 {
         return std::empty (str) ? 2216829733
                                 : (hnz::as<hnz::u32> (str[0])
-                                   ^ hash (str.substr (1,
-                                                       std::size (str) - 1))) * 0x100000001b3UL;
+                                   ^ hash_32 (str.substr (1,
+                                                          std::size (str) - 1))) * 0x100000001b3UL;
 
+    }
+
+    constexpr auto hash_8 (std::string_view str) noexcept -> hnz::u8 {
+        return std::empty (str) ? 37
+                                : (hnz::as<hnz::u8> (str[0])
+                                   ^ hash_8 (str.substr (1,
+                                                         std::size (str) - 1)));
+
+    }
+
+    constexpr auto bitset_256 (std::string_view str) noexcept -> std::bitset<256> {
+        auto bitset = std::bitset<256> {};
+
+        return bitset;
     }
 }

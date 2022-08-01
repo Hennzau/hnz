@@ -18,3 +18,7 @@ auto hnz::App::exists (const hnz::vector<hnz::entity>& entities) const -> bool {
 auto hnz::App::has (hnz::entity entity) const -> bool {
     return m_safe.components.contains (entity);
 }
+
+auto hnz::App::has (hnz::entity entity, hnz::Component::Type type) const -> bool {
+    return m_safe.components[entity].contains (type);
+}

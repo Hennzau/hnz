@@ -17,8 +17,8 @@ namespace hnz {
         static constexpr Type INVALID_TYPE = 0;
         static constexpr Type TYPE         = INVALID_TYPE;
 
-        static constexpr auto REQUIRED = { hnz::Component::INVALID_TYPE };
-        static constexpr auto USAGE    = Usage::ON_NOTIFICATION;
+        static constexpr auto REQUIREMENTS = { hnz::Component::INVALID_TYPE };
+        static constexpr auto USAGE        = Usage::ON_NOTIFICATION;
 
         virtual void operator() (hnz::f32 delta,
                                  hnz::entity entity,

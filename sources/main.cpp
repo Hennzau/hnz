@@ -43,8 +43,8 @@ struct Name : public hnz::Component {
 };
 
 struct PlayerMovement : public hnz::System {
-    static constexpr Type TYPE     = hnz::hash ("PlayerMovementSystem");
-    static constexpr auto REQUIRED = { Position::TYPE, Velocity::TYPE };
+    static constexpr Type TYPE         = hnz::hash ("PlayerMovementSystem");
+    static constexpr auto REQUIREMENTS = { Position::TYPE, Velocity::TYPE };
 
     static constexpr auto USAGE = hnz::System::Usage::ON_TICK;
 
@@ -60,7 +60,9 @@ struct PlayerMovement : public hnz::System {
     }
 };
 
-int main () {
+#include <bitset>
+
+int main () {/*
     auto app = hnz::App {};
 
     auto player = app.spawn ();             // 1
@@ -90,7 +92,9 @@ int main () {
     }
 
     work.join ();
-    app.join ();
+    app.join ();*/
+
+    std::cout << hnz::bitset_256 ("Position") << std::endl;
 
     return 0;
 }

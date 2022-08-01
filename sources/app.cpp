@@ -64,3 +64,4 @@ auto hnz::App::view (const std::vector<hnz::Component::Type>& components) const 
 
     return result;
 }
+
