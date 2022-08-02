@@ -66,18 +66,4 @@ namespace hnz {
                                                           std::size (str) - 1))) * 0x100000001b3UL;
 
     }
-
-    constexpr auto hash_8 (std::string_view str) noexcept -> hnz::u8 {
-        return std::empty (str) ? 37
-                                : (hnz::as<hnz::u8> (str[0])
-                                   ^ hash_8 (str.substr (1,
-                                                         std::size (str) - 1)));
-
-    }
-
-    constexpr auto bitset_256 (std::string_view str) noexcept -> std::bitset<256> {
-        auto bitset = std::bitset<256> {};
-
-        return bitset;
-    }
 }

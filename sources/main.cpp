@@ -1,100 +1,69 @@
 #include <iostream>
 
-#include <hnz/app.hpp>
 #include <hnz/types.hpp>
+#include <hnz/app.hpp>
 
-#include <hnz/ecs/system.hpp>
-#include <utility>
-
-#include <iostream>
-
-struct Position : public hnz::Component {
-    static constexpr Type TYPE = 2;
-
-    Position (float a, float b)
-            :
-            x { a },
-            y { b } {}
-
-    float x;
-    float y;
+struct A : hnz::Component {
+    static constexpr Type TYPE = hnz::hash_32 ("A");
 };
 
-struct Velocity : public hnz::Component {
-    static constexpr Type TYPE = 3;
-
-    Velocity (float a, float b)
-            :
-            dx { a },
-            dy { b } {}
-
-    float dx;
-    float dy;
+struct B : hnz::Component {
+    static constexpr Type TYPE = hnz::hash_32 ("B");
 };
 
-struct Name : public hnz::Component {
-    static constexpr Type TYPE = 5;
-
-    explicit Name (std::string a)
-            :
-            name { std::move (a) } {}
-
-    std::string name;
+struct C : hnz::Component {
+    static constexpr Type TYPE = hnz::hash_32 ("C");
 };
 
-struct PlayerMovement : public hnz::System {
-    static constexpr Type TYPE         = hnz::hash ("PlayerMovementSystem");
-    static constexpr auto REQUIREMENTS = { Position::TYPE, Velocity::TYPE };
-
-    static constexpr auto USAGE = hnz::System::Usage::ON_TICK;
-
-    void operator() (hnz::f32 delta,
-                     hnz::entity entity,
-                     const hnz::map<hnz::Component::Type, hnz::owner<hnz::Component>>& components,
-                     const hnz::vector<hnz::entity>& subscribers) override {
-        auto& position = *hnz::reinterpret<Position*> (components.at (Position::TYPE).get ());
-        auto& velocity = *hnz::reinterpret<Velocity*> (components.at (Velocity::TYPE).get ());
-
-        position.x += velocity.dx * delta;
-        position.y += velocity.dy * delta;
-    }
+struct D : hnz::Component {
+    static constexpr Type TYPE = hnz::hash_32 ("D");
 };
 
-#include <bitset>
-
-int main () {/*
+int main () {
     auto app = hnz::App {};
 
-    auto player = app.spawn ();             // 1
-    auto weapon = app.spawn (player);   // 2
-    auto armor  = app.spawn (player);   // 3
-    auto ammo   = app.spawn (weapon);   // 4
-    auto wings  = app.spawn (player);   // 5
-    auto fire   = app.spawn (wings);    // 6
+    app.register_group ({
+                                A::TYPE,
+                                B::TYPE,
+                        });
 
-    app.add<Position> ({ player, armor, ammo },
-                       0.0f,
-                       0.0f);
+    app.register_group ({
+                                A::TYPE,
+                                C::TYPE,
+                        });
 
-    app.add<Velocity> ({ player, fire },
-                       1.0f,
-                       0.0f);
+    app.register_group ({
+                                A::TYPE,
+                                B::TYPE,
+                                C::TYPE,
+                        });
 
-    app.kill (wings, true);
+    auto entities = hnz::vector<hnz::entity> {};
 
-    auto work = std::thread ([&app] () {
-        std::this_thread::sleep_for (std::chrono::seconds (2));
-        app.running ().set (false);
-    });
-
-    while (app.running ().is ()) {
-        app.run ();
+    for (auto i = 0; i < 6; i++) {
+        entities.emplace_back (app.spawn ());
+        app.add<A> (entities.back ());
     }
 
-    work.join ();
-    app.join ();*/
+    for (auto i = 3; i < 6; i++) {
+        app.add<B> (entities[i]);
+    }
 
-    std::cout << hnz::bitset_256 ("Position") << std::endl;
+    for (auto i = 2; i < 4; i++) {
+        app.add<C> (entities[i]);
+    }
+
+    app.add<D> (entities[4]);
+
+    for (auto& [type, pool]: app.pools ()) {
+        std::cout << "Pool " << type << ": ";
+
+        for (auto entity: pool.entities) {
+            std::cout << entity << " ";
+        }
+
+        std::cout << std::endl;
+    }
 
     return 0;
 }
