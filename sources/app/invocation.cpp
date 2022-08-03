@@ -7,3 +7,4 @@ auto hnz::App::spawn () -> hnz::entity {
 
     return entity;
 }
+

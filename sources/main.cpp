@@ -3,67 +3,99 @@
 #include <hnz/types.hpp>
 #include <hnz/app.hpp>
 
-struct A : hnz::Component {
-    static constexpr Type TYPE = hnz::hash_32 ("A");
+struct Position : public hnz::Component {
+    static constexpr Type TYPE = hnz::hash_32 ("PositionComponent");
+
+    Position (float a, float b)
+            :
+            x { a },
+            y { b } {}
+
+    float x;
+    float y;
 };
 
-struct B : hnz::Component {
-    static constexpr Type TYPE = hnz::hash_32 ("B");
+struct Velocity : public hnz::Component {
+    static constexpr Type TYPE = hnz::hash_32 ("VelocityComponent");
+
+    Velocity (float a, float b)
+            :
+            x { a },
+            y { b } {}
+
+    float x;
+    float y;
 };
 
-struct C : hnz::Component {
-    static constexpr Type TYPE = hnz::hash_32 ("C");
+struct Name : public hnz::Component {
+    static constexpr Type TYPE = hnz::hash_32 ("NameComponent");
+
+    explicit Name (std::string&& a)
+            :
+            name { std::move (a) } {}
+
+    std::string name;
 };
 
-struct D : hnz::Component {
-    static constexpr Type TYPE = hnz::hash_32 ("D");
+struct PlayerMovement : public hnz::System {
+    static constexpr Type TYPE         = hnz::hash_32 ("PlayerMovementSystem");
+    static constexpr auto REQUIREMENTS = { Position::TYPE, Velocity::TYPE };
+
+    static constexpr auto USAGE = hnz::System::Usage::ON_TICK;
+
+    void operator() (hnz::f32 delta,
+                     hnz::entity entity,
+                     const hnz::map<hnz::Component::Type, hnz::owner<hnz::Component>>& components,
+                     const hnz::vector<hnz::entity>& subscribers) override {
+
+    }
+};
+
+struct PrintPosition : public hnz::System {
+    static constexpr Type TYPE         = hnz::hash_32 ("PrintPositionSystem");
+    static constexpr auto REQUIREMENTS = { Position::TYPE };
+    static constexpr auto USAGE        = hnz::System::Usage::ON_NOTIFICATION;
+
+    void operator() (hnz::f32 delta,
+                     hnz::entity entity,
+                     const hnz::map<hnz::Component::Type, hnz::owner<hnz::Component>>& components,
+                     const hnz::vector<hnz::entity>& subscribers) override {
+    }
+};
+
+struct PrintPositionVelocityWithName : public hnz::System {
+    static constexpr Type TYPE         = hnz::hash_32 ("PrintPositionVelocityWithNameSystem");
+    static constexpr auto REQUIREMENTS = { Position::TYPE, Velocity::TYPE, Name::TYPE };
+    static constexpr auto USAGE        = hnz::System::Usage::ON_NOTIFICATION;
+
+    void operator() (hnz::f32 delta,
+                     hnz::entity entity,
+                     const hnz::map<hnz::Component::Type, hnz::owner<hnz::Component>>& components,
+                     const hnz::vector<hnz::entity>& subscribers) override {
+    }
+};
+
+struct PrintVelocityWithName : public hnz::System {
+    static constexpr Type TYPE         = hnz::hash_32 ("PrintVelocityWithNameSystem");
+    static constexpr auto REQUIREMENTS = { Velocity::TYPE, Name::TYPE };
+    static constexpr auto USAGE        = hnz::System::Usage::ON_NOTIFICATION;
+
+    void operator() (hnz::f32 delta,
+                     hnz::entity entity,
+                     const hnz::map<hnz::Component::Type, hnz::owner<hnz::Component>>& components,
+                     const hnz::vector<hnz::entity>& subscribers) override {
+    }
 };
 
 int main () {
     auto app = hnz::App {};
 
-    app.register_group ({
-                                A::TYPE,
-                                B::TYPE,
-                        });
+    app.record<PlayerMovement> ();
+    app.record<PrintPosition> ();
+    app.record<PrintVelocityWithName> ();
+    app.record<PrintPositionVelocityWithName> ();
 
-    app.register_group ({
-                                A::TYPE,
-                                C::TYPE,
-                        });
-
-    app.register_group ({
-                                A::TYPE,
-                                B::TYPE,
-                                C::TYPE,
-                        });
-
-    auto entities = hnz::vector<hnz::entity> {};
-
-    for (auto i = 0; i < 6; i++) {
-        entities.emplace_back (app.spawn ());
-        app.add<A> (entities.back ());
-    }
-
-    for (auto i = 3; i < 6; i++) {
-        app.add<B> (entities[i]);
-    }
-
-    for (auto i = 2; i < 4; i++) {
-        app.add<C> (entities[i]);
-    }
-
-    app.add<D> (entities[4]);
-
-    for (auto& [type, pool]: app.pools ()) {
-        std::cout << "Pool " << type << ": ";
-
-        for (auto entity: pool.entities) {
-            std::cout << entity << " ";
-        }
-
-        std::cout << std::endl;
-    }
+    app.build ();
 
     return 0;
 }

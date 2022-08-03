@@ -7,7 +7,6 @@
 #include <hnz/ecs/entity.hpp>
 #include <hnz/ecs/component.hpp>
 #include <hnz/ecs/system.hpp>
-#include <hnz/ecs/pool.hpp>
 #include <hnz/ecs/group.hpp>
 
 #include <iostream>
@@ -19,7 +18,7 @@ namespace hnz {
 
             ~App () = default;
 
-            [[nodiscard]] auto& pools () const noexcept { return m_pools; }
+            auto build () -> void;
 
             /* invocations */
 
@@ -31,33 +30,50 @@ namespace hnz {
 
             /* components */
 
-            template<typename T, typename... Args>
-            auto add (hnz::entity entity, Args&& ... args) -> void {
-                m_pools[T::TYPE].template add<T> (entity,
-                                                  std::forward<Args> (args)...);
-            }
+            /* systems */
 
             template<typename T>
-            auto remove (hnz::entity entity) -> void {
-                m_pools[T::TYPE].remove (entity);
-            }
+            auto record () -> void {
+                static_assert (std::is_base_of_v<System, T>,
+                               "T must be a System");
 
-            // retrieve component's ids of a given entity, iterating over pools
-            [[nodiscard]] auto retrieve (hnz::entity entity) const -> hnz::vector<hnz::Component::Type>;
+                static_assert (T::REQUIREMENTS.size () != 0,
+                               "T must have at least one requirement");
 
-            /* groups */
+                m_systems[T::TYPE] = AppSystem {
+                        .ptr = std::make_unique<T> (),
+                        .requirements = T::REQUIREMENTS,
+                };
 
-            void register_group (const hnz::vector<hnz::Component::Type>& types) {
-                m_registered_groups.emplace_back (types);
+                // if T::REQUIREMENTS.size () == 1, so we link the pool of components
+                if (T::REQUIREMENTS.size () == 1) {
+
+                } else {
+                    m_groups_required.emplace_back (T::REQUIREMENTS);
+                }
             }
 
         private:
             hnz::set<hnz::entity> m_entities;
-            hnz::u32              m_next_valid_entity = 0;
+            hnz::u32              m_next_valid_entity = 0;;
 
-            hnz::map<hnz::Component::Type, hnz::Pool> m_pools;
+            struct EntitiesInSystem {
+                hnz::vector<hnz::entity>* entities;
+                hnz::u32                * count;
+            };
 
-            hnz::map<hnz::Component::Sum, bool>            m_groups;
-            hnz::vector<hnz::vector<hnz::Component::Type>> m_registered_groups;
+            struct AppSystem {
+                hnz::owner<hnz::System> ptr;
+                hnz::Component::Types   requirements;
+            };
+
+            hnz::map<hnz::System::Type, AppSystem>        m_systems;
+            hnz::map<hnz::System::Type, EntitiesInSystem> m_entities_in_system;
+
+            /* groups */
+            static constexpr auto sort (hnz::vector<hnz::Component::Types>& wanted) -> void;
+
+            hnz::vector<hnz::Component::Types> m_groups_required;
+            hnz::vector<hnz::Group>            m_groups;
     };
 }

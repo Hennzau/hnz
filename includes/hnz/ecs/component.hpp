@@ -5,6 +5,8 @@
 namespace hnz {
     struct Component {
         using Type = hnz::u32;
+        using Types = hnz::vector<Type>;
+
         using Sum = hnz::u64;
 
         static constexpr Type INVALID_TYPE = 0;
